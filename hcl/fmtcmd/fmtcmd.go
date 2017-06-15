@@ -41,11 +41,11 @@ func isValidFile(f os.FileInfo, extensions []string) bool {
 }
 
 // If in == nil, the source is the contents of the file with the given filename.
-func processFile(filename string, in io.Reader, out io.Writer, stdin bool, opts Options) error {
+func processFile(filename string, in io.Reader, out io.Writer, stdin bool, opts Options) (changed bool, err error) {
 	if in == nil {
 		f, err := os.Open(filename)
 		if err != nil {
-			return err
+			return false, err
 		}
 		defer f.Close()
 		in = f
@@ -53,29 +53,30 @@ func processFile(filename string, in io.Reader, out io.Writer, stdin bool, opts 
 
 	src, err := ioutil.ReadAll(in)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	res, err := printer.Format(src)
 	if err != nil {
-		return fmt.Errorf("In %s: %s", filename, err)
+		return false, fmt.Errorf("In %s: %s", filename, err)
 	}
 
+	changed = false
 	if !bytes.Equal(src, res) {
-		// formatting has changed
+		changed = true
 		if opts.List {
 			fmt.Fprintln(out, filename)
 		}
 		if opts.Write {
 			err = ioutil.WriteFile(filename, res, 0644)
 			if err != nil {
-				return err
+				return false, err
 			}
 		}
 		if opts.Diff {
 			data, err := diff(src, res)
 			if err != nil {
-				return fmt.Errorf("computing diff: %s", err)
+				return false, fmt.Errorf("computing diff: %s", err)
 			}
 			fmt.Fprintf(out, "diff a/%s b/%s\n", filename, filename)
 			out.Write(data)
@@ -86,13 +87,13 @@ func processFile(filename string, in io.Reader, out io.Writer, stdin bool, opts 
 		_, err = out.Write(res)
 	}
 
-	return err
+	return changed, err
 }
 
 func walkDir(path string, extensions []string, stdout io.Writer, opts Options) error {
 	visitFile := func(path string, f os.FileInfo, err error) error {
 		if err == nil && isValidFile(f, extensions) {
-			err = processFile(path, nil, stdout, false, opts)
+			_, err = processFile(path, nil, stdout, false, opts)
 		}
 		return err
 	}
@@ -105,33 +106,33 @@ func Run(
 	stdin io.Reader,
 	stdout io.Writer,
 	opts Options,
-) error {
+) (changed bool, err error) {
 	if len(paths) == 0 {
 		if opts.Write {
-			return ErrWriteStdin
+			return false, ErrWriteStdin
 		}
-		if err := processFile("<standard input>", stdin, stdout, true, opts); err != nil {
-			return err
+		if changed, err := processFile("<standard input>", stdin, stdout, true, opts); err != nil {
+			return changed, err
 		}
-		return nil
+		return false, nil
 	}
 
 	for _, path := range paths {
 		switch dir, err := os.Stat(path); {
 		case err != nil:
-			return err
+			return false, err
 		case dir.IsDir():
 			if err := walkDir(path, extensions, stdout, opts); err != nil {
-				return err
+				return false, err
 			}
 		default:
-			if err := processFile(path, nil, stdout, false, opts); err != nil {
-				return err
+			if changed, err := processFile(path, nil, stdout, false, opts); err != nil {
+				return changed, err
 			}
 		}
 	}
 
-	return nil
+	return changed, nil
 }
 
 func diff(b1, b2 []byte) (data []byte, err error) {

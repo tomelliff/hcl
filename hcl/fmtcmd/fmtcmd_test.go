@@ -73,7 +73,8 @@ func TestRunMultiplePaths(t *testing.T) {
 	}
 
 	_, stdout := mockIO()
-	err = Run(
+	var changed bool
+	changed, err = Run(
 		[]string{path1, path2},
 		fixtureExtensions,
 		nil, stdout,
@@ -81,6 +82,10 @@ func TestRunMultiplePaths(t *testing.T) {
 			List: true,
 		},
 	)
+
+	if changed == false {
+		t.Errorf("expected changes")
+	}
 
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
@@ -119,7 +124,8 @@ func TestRunSubDirectories(t *testing.T) {
 	}
 
 	_, stdout := mockIO()
-	err = Run(
+	var changed bool
+	changed, err = Run(
 		[]string{pathParent},
 		fixtureExtensions,
 		nil, stdout,
@@ -127,6 +133,10 @@ func TestRunSubDirectories(t *testing.T) {
 			List: true,
 		},
 	)
+
+	if changed == false {
+		t.Errorf("expected changes")
+	}
 
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
@@ -150,12 +160,16 @@ func TestRunStdin(t *testing.T) {
 		stdin.Write(fixture.input)
 	}
 
-	err := Run(
+	changed, err := Run(
 		[]string{},
 		fixtureExtensions,
 		stdin, stdout,
 		Options{},
 	)
+
+	if changed == false {
+		t.Errorf("expected changes")
+	}
 
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
@@ -170,13 +184,17 @@ func TestRunStdinAndWrite(t *testing.T) {
 
 	stdin, stdout := mockIO()
 	stdin.WriteString("")
-	err := Run(
+	changed, err := Run(
 		[]string{}, []string{},
 		stdin, stdout,
 		Options{
 			Write: true,
 		},
 	)
+
+	if changed == false {
+		t.Errorf("expected changes")
+	}
 
 	if err != ErrWriteStdin {
 		t.Errorf("error want:\n%s\ngot:\n%s", ErrWriteStdin, err)
@@ -206,12 +224,17 @@ func TestRunFileError(t *testing.T) {
 	}
 
 	_, stdout := mockIO()
-	err = Run(
+	var changed bool
+	changed, err = Run(
 		[]string{path},
 		fixtureExtensions,
 		nil, stdout,
 		Options{},
 	)
+
+	if changed != false {
+		t.Errorf("expected no changes")
+	}
 
 	if !reflect.DeepEqual(err, expectedError) {
 		t.Errorf("error want: %#v, got: %#v", expectedError, err)
@@ -231,12 +254,17 @@ func TestRunNoOptions(t *testing.T) {
 	}
 
 	_, stdout := mockIO()
-	err = Run(
+	var changed bool
+	changed, err = Run(
 		[]string{path},
 		fixtureExtensions,
 		nil, stdout,
 		Options{},
 	)
+
+	if changed == false {
+		t.Errorf("expected changes")
+	}
 
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
@@ -261,7 +289,8 @@ func TestRunList(t *testing.T) {
 	}
 
 	_, stdout := mockIO()
-	err = Run(
+	var changed bool
+	changed, err = Run(
 		[]string{path},
 		fixtureExtensions,
 		nil, stdout,
@@ -269,6 +298,10 @@ func TestRunList(t *testing.T) {
 			List: true,
 		},
 	)
+
+	if changed == false {
+		t.Errorf("expected changes")
+	}
 
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
@@ -286,7 +319,8 @@ func TestRunWrite(t *testing.T) {
 	defer os.RemoveAll(path)
 
 	_, stdout := mockIO()
-	err = Run(
+	var changed bool
+	changed, err = Run(
 		[]string{path},
 		fixtureExtensions,
 		nil, stdout,
@@ -294,6 +328,10 @@ func TestRunWrite(t *testing.T) {
 			Write: true,
 		},
 	)
+
+	if changed == false {
+		t.Errorf("expected changes")
+	}
 
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
@@ -334,7 +372,8 @@ func TestRunDiff(t *testing.T) {
 	expectedOutString := testhelper.Unix2dos(expectedOut.String())
 
 	_, stdout := mockIO()
-	err = Run(
+	var changed bool
+	changed, err = Run(
 		[]string{path},
 		fixtureExtensions,
 		nil, stdout,
@@ -342,6 +381,10 @@ func TestRunDiff(t *testing.T) {
 			Diff: true,
 		},
 	)
+
+	if changed == false {
+		t.Errorf("expected changes")
+	}
 
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
